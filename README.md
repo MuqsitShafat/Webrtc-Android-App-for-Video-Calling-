@@ -1,38 +1,174 @@
-# 📞 React Native WebRTC Video Call App
+#  React Native WebRTC Video Call App
 
-This is a real-time, peer-to-peer (P2P) video calling application. It allows two users to connect via a unique Caller ID and stream high-quality video and audio directly to each other.
+A real-time **Peer-to-Peer (P2P) Video Calling Application** built using:
 
----
+- React Native  
+- WebRTC  
+- Socket.io (Signaling Server)  
+- Node.js Backend  
 
-## 🛠 How It Works (For Beginners)
-
-This app doesn't just "send video" through a server. It uses **WebRTC**, which stands for *Web Real-Time Communication*. 
-
-1. **Signaling**: The app uses a Socket.io server (your `API_URL`) to help two phones "find" each other.
-2. **The Handshake**: Phone A sends an "Offer" (its camera details) to Phone B. Phone B sends back an "Answer."
-3. **ICE Candidates**: The phones exchange "ICE Candidates," which are basically digital maps telling each other the best network path to use.
-4. **P2P Stream**: Once the handshake is done, the video data travels **directly** from one phone to the other, making it extremely fast.
-
-
+This app allows two Android devices to connect using a unique Caller ID and stream live video/audio directly between them.
 
 ---
 
-## 🖼 App Visuals (Assets)
+#  How It Works (Beginner Friendly Explanation)
 
-We use specific images located in `src/assets/` to make the UI intuitive:
-* **`caller.jpeg`**: Background used when you are dialing someone.
-* **`receivericon.png`**: The icon shown on the screen when you are receiving a call.
-* **`hangup.jpeg`**: The visual for the end-call button.
+This app uses **WebRTC (Web Real-Time Communication)**.
+
+### Step 1 — Signaling (Finding Each Other)
+A Socket.io server helps two phones discover each other.
+
+### Step 2 — Offer & Answer
+- Caller sends an **Offer**
+- Receiver sends back an **Answer**
+
+### Step 3 — ICE Candidates
+Both phones exchange network information (ICE Candidates) to find the best path.
+
+### Step 4 — Direct P2P Streaming
+After handshake:
+-  Video travels directly phone-to-phone  
+-  No video goes through the server  
+-  Ultra low latency  
 
 ---
 
-## 🚀 Getting Started
+# 🖼 App UI Preview
 
-### 1. Requirements
-* Only physical Android mobile its not for ios  (WebRTC does not work well on Emulators).
-* A running signaling server (Node.js/Socket.io).
+Images are located inside:
 
-### 2. Set Environment Variables
-Create a file named `.env` in the root of the project and add your server's address:
-```env
-API_URL=http://your-server-ip-here:3000
+```
+src/assets/
+```
+
+| Feature | Preview |
+|---------|----------|
+| Caller Screen | ![Caller](./src/assets/caller.jpeg) |
+| Incoming Call | ![Receiver](./src/assets/receivericon.png) |
+| Hangup Button | ![Hangup](./src/assets/hangup.jpeg) |
+
+> ⚠️ If images do not appear, make sure filenames EXACTLY match (case-sensitive).
+
+---
+
+# 📦 Project Structure
+
+```
+root
+ ├── server/        → Node.js + Socket.io signaling server
+ ├── src/
+ │    ├── assets/   → Images
+ │    └── components/
+ ├── android/
+ ├── App.jsx
+ └── .env
+```
+
+---
+
+# 🛠 Requirements
+
+- ✅ Physical Android device (WebRTC unstable on emulator)
+- ✅ Node.js installed
+- ✅ Android Studio configured
+- ✅ Same WiFi network for both devices
+
+---
+
+# 🔧 Setup Instructions
+
+
+## 2️⃣ Install Dependencies
+
+### Install frontend dependencies:
+
+```bash
+npm install
+```
+
+### Install server dependencies:
+
+```bash
+cd server
+npm install
+cd ..
+```
+
+---
+
+## 3️⃣ Setup Environment Variable
+
+Create a `.env` file in the root folder:
+
+```
+API_URL=http://YOUR_LOCAL_IP:3000
+```
+
+Example:
+
+```
+API_URL=http://192.168.100.177:3000
+```
+
+⚠️ Use your laptop's local IP address.
+
+---
+
+## 4️⃣ Start Signaling Server
+
+Inside `/server` folder:
+
+```bash
+node index.js
+```
+
+Server runs on:
+
+```
+http://localhost:3000
+```
+
+---
+
+## 5️⃣ Start Metro
+
+From root folder:
+
+```bash
+npm start
+```
+
+---
+
+## 6️⃣ Run Android App
+
+In new terminal:
+
+```bash
+npm run android
+```
+
+OR
+
+```bash
+npx react-native run-android
+```
+
+---
+
+#  How To Test Video Call
+
+1. Install app on two physical phones  
+2. Make sure both are on same WiFi  
+3. Open app on both devices  
+4. Enter Caller ID  
+5. Press Call  
+6. Accept on second phone  
+7. Video connected  
+
+---
+
+#  Author
+
+Muqsit Shafat  
+GitHub: https://github.com/MuqsitShafat
