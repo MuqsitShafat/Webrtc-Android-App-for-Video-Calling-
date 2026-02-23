@@ -43,11 +43,9 @@ src/assets/
 
 | Feature | Preview |
 |---------|----------|
-| Caller Screen | ![Caller](./src/assets/caller.jpeg) |
+| Caller Screen | ![Caller](./src/assets/caller.png) |
 | Incoming Call | ![Receiver](./src/assets/receivericon.png) |
 | Hangup Button | ![Hangup](./src/assets/hangup.png) |
-
-> ⚠️ If images do not appear, make sure filenames EXACTLY match (case-sensitive).
 
 ---
 
