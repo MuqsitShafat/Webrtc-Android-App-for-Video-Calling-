@@ -43,12 +43,19 @@ module.exports.initIO = httpServer => {
       });
     });
 
-    // NEW: Handle endCall event
     socket.on('endCall', data => {
       let targetId = data.to;
       socket.to(targetId).emit('remoteHangup');
     });
-  });
+
+    // ✅ CORRECT POSITION: Inside the connection block
+    socket.on('cameraSwitch', data => {
+      let targetId = data.to;
+      socket.to(targetId).emit('cameraSwitch', {
+        isFrontCamera: data.isFrontCamera,
+      });
+    });
+  }); // ← connection block closes HERE
 };
 
 module.exports.getIO = () => {

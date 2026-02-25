@@ -35,6 +35,8 @@ export default function App() {
   const [otherUserId, setOtherUserId] = useState('');
   const [localStream, setlocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [isFrontCamera, setIsFrontCamera] = useState(true);
+const [isRemoteFrontCamera, setIsRemoteFrontCamera] = useState(false);
 
   const socket = useRef(null);
   const peerConnection = useRef(null);
@@ -185,6 +187,12 @@ export default function App() {
       }
     });
 
+    // LISTENER: Detect when the other person switches their camera
+    socket.current.on('cameraSwitch', data => {
+      setIsRemoteFrontCamera(data.isFrontCamera);
+    });
+
+    // LISTENER: Detect when the other person hangs up
     socket.current.on('remoteHangup', () => {
       leaveLocal();
     });
@@ -228,19 +236,30 @@ export default function App() {
     });
   }
 
-  function leaveLocal() {
+ function leaveLocal() {
     InCallManager.stop();
     setType('JOIN');
     setRemoteStream(null);
     iceCandidatesQueue.current = [];
 
-    // Completely reset the connection
+    //! Reset mirror states
+    setIsFrontCamera(true);
+    setIsRemoteFrontCamera(false);
+
+    //! Reset physical camera back to front
+    if (localStream) {
+      localStream.getVideoTracks().forEach(track => {
+        if (track._switchCamera && !isFrontCamera) {
+          track._switchCamera(); // switch back to front only if currently on back
+        }
+      });
+    }
+
     if (peerConnection.current) {
       peerConnection.current.close();
       peerConnection.current = null;
     }
 
-    // Prepare for next call by re-binding the stream
     setupPeerConnection(localStream);
   }
 
@@ -410,6 +429,9 @@ export default function App() {
           streamURL={remoteStream.toURL()}
           style={{ flex: 1 }}
           objectFit="cover"
+          // Remote stream usually should NOT be mirrored
+         // Only mirror if the SENDER is using their front camera
+          mirror={isRemoteFrontCamera}
         />
       ) : (
         <View
@@ -430,6 +452,7 @@ export default function App() {
             overflow: 'hidden',
             borderWidth: 2,
             borderColor: '#5568FE',
+            elevation: 10, // Ensure it stays on top for Android
           }}
         >
           <RTCView
@@ -437,6 +460,8 @@ export default function App() {
             style={{ flex: 1 }}
             objectFit="cover"
             zOrder={1}
+            // LOCAL stream (front camera) SHOULD be mirrored to feel like a mirror
+            mirror={isFrontCamera} // DYNAMIC MIRRORING
           />
         </View>
       )}
@@ -459,11 +484,17 @@ export default function App() {
         <IconContainer
           backgroundColor="#5568FE"
           onPress={() => {
-            if (localStream) {
-              localStream
-                .getVideoTracks()
-                .forEach(track => track._switchCamera());
-            }
+            localStream.getVideoTracks().forEach(track => {
+              track._switchCamera();
+              const newIsFront = !isFrontCamera;
+              setIsFrontCamera(newIsFront);
+
+              // Tell the other person what camera we are using
+              socket.current.emit('cameraSwitch', {
+                to: otherUserIdRef.current,
+                isFrontCamera: newIsFront,
+              });
+            });
           }}
           Icon={() => <Text style={{ fontSize: 25 }}>🔄</Text>}
         />
