@@ -1,4 +1,4 @@
-const { Server } = require('socket.io');
+const {Server} = require('socket.io');
 let IO;
 
 module.exports.initIO = httpServer => {
@@ -16,46 +16,56 @@ module.exports.initIO = httpServer => {
     console.log(socket.user, 'Connected');
     socket.join(socket.user);
 
+    // ✅ Forward ALL call data to receiver
     socket.on('call', data => {
-      let calleeId = data.calleeId;
-      let rtcMessage = data.rtcMessage;
-      socket.to(calleeId).emit('newCall', {
-        callerId: socket.user,
-        rtcMessage: rtcMessage,
+      socket.to(data.calleeId).emit('newCall', {
+        callerId: data.callerId,
+        callerName: data.callerName,
+        callerPic: data.callerPic,
+        receiverId: data.receiverId,
+        receiverName: data.receiverName,
+        receiverPic: data.receiverPic,
+        rtcMessage: data.rtcMessage,
       });
     });
 
     socket.on('answerCall', data => {
-      let callerId = data.callerId;
-      let rtcMessage = data.rtcMessage;
-      socket.to(callerId).emit('callAnswered', {
+      socket.to(data.callerId).emit('callAnswered', {
         callee: socket.user,
-        rtcMessage: rtcMessage,
+        rtcMessage: data.rtcMessage,
       });
     });
 
     socket.on('ICEcandidate', data => {
-      let calleeId = data.calleeId;
-      let rtcMessage = data.rtcMessage;
-      socket.to(calleeId).emit('ICEcandidate', {
+      socket.to(data.calleeId).emit('ICEcandidate', {
         sender: socket.user,
-        rtcMessage: rtcMessage,
+        rtcMessage: data.rtcMessage,
       });
     });
 
+    // ✅ endCall works at ANY stage — before or during call
     socket.on('endCall', data => {
-      let targetId = data.to;
-      socket.to(targetId).emit('remoteHangup');
+      socket.to(data.to).emit('remoteHangup');
     });
 
-    // ✅ CORRECT POSITION: Inside the connection block
     socket.on('cameraSwitch', data => {
-      let targetId = data.to;
-      socket.to(targetId).emit('cameraSwitch', {
+      socket.to(data.to).emit('cameraSwitch', {
         isFrontCamera: data.isFrontCamera,
       });
     });
-  }); // ← connection block closes HERE
+
+    socket.on('videoToggle', data => {
+      socket.to(data.to).emit('videoToggle', {
+        isVideoOn: data.isVideoOn,
+      });
+    });
+
+    socket.on('videoToggleResponse', data => {
+      socket.to(data.to).emit('videoToggleResponse', {
+        accepted: data.accepted,
+      });
+    });
+  });
 };
 
 module.exports.getIO = () => {
