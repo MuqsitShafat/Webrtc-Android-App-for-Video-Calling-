@@ -1,6 +1,37 @@
 const {Server} = require('socket.io');
 let IO;
 
+// 🚀 Helper to securely send Push Notifications for EVERYTHING
+const sendPush = (token, title, body) => {
+  if (!token) return;
+  try {
+    const admin = require('firebase-admin');
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY
+            ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+            : undefined,
+        })
+      });
+    }
+
+    const payload = {
+      token: token,
+      notification: { title, body },
+      android: { priority: 'high' }
+    };
+
+    admin.messaging().send(payload)
+      .then(response => console.log('Successfully sent notification:', title))
+      .catch(error => console.log('Error sending notification:', error));
+  } catch (err) {
+    console.log('Firebase-admin error:', err.message);
+  }
+};
+
 module.exports.initIO = httpServer => {
   IO = new Server(httpServer);
 
@@ -16,7 +47,6 @@ module.exports.initIO = httpServer => {
     console.log(socket.user, 'Connected');
     socket.join(socket.user);
 
-    // ✅ Forward ALL call data to receiver
     socket.on('call', data => {
       socket.to(data.calleeId).emit('newCall', {
         callerId: data.callerId,
@@ -27,6 +57,11 @@ module.exports.initIO = httpServer => {
         receiverPic: data.receiverPic,
         rtcMessage: data.rtcMessage,
       });
+
+      // 🚀 Incoming Call Push Notification
+      if (data.token) {
+        sendPush(data.token, "Incoming Audio Call", `${data.callerName} is calling you...`);
+      }
     });
 
     socket.on('answerCall', data => {
@@ -45,6 +80,11 @@ module.exports.initIO = httpServer => {
 
     socket.on('endCall', data => {
       socket.to(data.to).emit('remoteHangup');
+
+      // 🚀 Missed Call Push Notification
+      if (data.token && data.missed) {
+        sendPush(data.token, "Missed Audio Call", `You missed a call from ${data.callerName}`);
+      }
     });
 
     socket.on('cameraSwitch', data => {
@@ -65,47 +105,10 @@ module.exports.initIO = httpServer => {
       });
     });
 
-    // 🚀 NEW: Relay Push Notifications using Firebase Admin and Koyeb Env Variables
+    // 🚀 Text Message Push Notification
     socket.on('sendNotification', data => {
       if (data.token) {
-        try {
-          const admin = require('firebase-admin');
-          if (!admin.apps.length) {
-            try {
-              admin.initializeApp({
-                credential: admin.credential.cert({
-                  projectId: process.env.FIREBASE_PROJECT_ID,
-                  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                  // Securely converts Koyeb \n strings into actual line breaks
-                  privateKey: process.env.FIREBASE_PRIVATE_KEY
-                    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-                    : undefined,
-                })
-              });
-            } catch (err) {
-              console.log('FCM setup error: missing or invalid Environment Variables');
-              return;
-            }
-          }
-
-          const payload = {
-            token: data.token,
-            notification: {
-              title: data.title,
-              body: data.body,
-            },
-            android: {
-              priority: 'high',
-            }
-          };
-
-          admin.messaging().send(payload)
-            .then(response => console.log('Successfully sent notification:', response))
-            .catch(error => console.log('Error sending notification:', error));
-
-        } catch (e) {
-          console.log('Firebase-admin package not found or configured:', e.message);
-        }
+        sendPush(data.token, data.title, data.body);
       }
     });
 
