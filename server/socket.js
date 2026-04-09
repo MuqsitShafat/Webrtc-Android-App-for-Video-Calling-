@@ -69,9 +69,16 @@ module.exports.initIO = httpServer => {
 
       // 🚀 Incoming Call Push Notification
       if (data.token) {
+        // We pack the entire call payload here so the app can wake up and answer
         sendPush(data.token, "Incoming Audio Call", `${data.callerName} is calling you...`, {
-          friendId: String(data.callerId || ''),
-          friendName: String(data.callerName || '')
+          isCall: 'true',
+          callerId: String(data.callerId || ''),
+          callerName: String(data.callerName || ''),
+          callerPic: String(data.callerPic || ''),
+          receiverId: String(data.receiverId || ''),
+          receiverName: String(data.receiverName || ''),
+          receiverPic: String(data.receiverPic || ''),
+          rtcMessage: data.rtcMessage ? JSON.stringify(data.rtcMessage) : ''
         });
       }
     });
