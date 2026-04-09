@@ -2,7 +2,7 @@ const {Server} = require('socket.io');
 let IO;
 
 // 🚀 Helper to securely send Push Notifications for EVERYTHING
-const sendPush = (token, title, body) => {
+const sendPush = (token, title, body, dataPayload = {}) => {
   if (!token) return;
   try {
     const admin = require('firebase-admin');
@@ -18,15 +18,24 @@ const sendPush = (token, title, body) => {
       });
     }
 
+    // 🔴 CRITICAL: Embed notification text inside "data" rather than "notification". 
+    // This allows the React Native app to run a background action (double tick) before showing the alert.
+    // FCM `data` objects can ONLY contain strings!
+    const combinedData = {
+      ...dataPayload,
+      notificationTitle: String(title || ''),
+      notificationBody: String(body || '')
+    };
+
     const payload = {
       token: token,
-      notification: { title, body },
+      data: combinedData, // DATA-ONLY PAYLOAD
       android: { priority: 'high' }
     };
 
     admin.messaging().send(payload)
-      .then(response => console.log('Successfully sent notification:', title))
-      .catch(error => console.log('Error sending notification:', error));
+      .then(response => console.log('Successfully sent data-only notification:', title))
+      .catch(error => console.log('Error sending data-only notification:', error));
   } catch (err) {
     console.log('Firebase-admin error:', err.message);
   }
@@ -60,7 +69,10 @@ module.exports.initIO = httpServer => {
 
       // 🚀 Incoming Call Push Notification
       if (data.token) {
-        sendPush(data.token, "Incoming Audio Call", `${data.callerName} is calling you...`);
+        sendPush(data.token, "Incoming Audio Call", `${data.callerName} is calling you...`, {
+          friendId: String(data.callerId || ''),
+          friendName: String(data.callerName || '')
+        });
       }
     });
 
@@ -83,7 +95,10 @@ module.exports.initIO = httpServer => {
 
       // 🚀 Missed Call Push Notification
       if (data.token && data.missed) {
-        sendPush(data.token, "Missed Audio Call", `You missed a call from ${data.callerName}`);
+        sendPush(data.token, "Missed Audio Call", `You missed a call from ${data.callerName}`, {
+          friendId: String(data.callerId || ''),
+          friendName: String(data.callerName || '')
+        });
       }
     });
 
@@ -108,7 +123,13 @@ module.exports.initIO = httpServer => {
     // 🚀 Text Message Push Notification
     socket.on('sendNotification', data => {
       if (data.token) {
-        sendPush(data.token, data.title, data.body);
+        // Pass the Message/Chat IDs into the data chunk to perform the background Firestore update.
+        sendPush(data.token, data.title, data.body, { 
+          friendId: String(data.senderId || ''), 
+          friendName: String(data.title || ''), 
+          chatId: String(data.chatId || ''), 
+          msgId: String(data.msgId || '') 
+        });
       }
     });
 
