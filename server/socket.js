@@ -20,7 +20,6 @@ const sendPush = (token, title, body, dataPayload = {}) => {
 
     // 🔴 CRITICAL: Embed notification text inside "data" rather than "notification". 
     // This allows the React Native app to run a background action (double tick) before showing the alert.
-    // FCM `data` objects can ONLY contain strings!
     const combinedData = {
       ...dataPayload,
       notificationTitle: String(title || ''),
@@ -69,7 +68,6 @@ module.exports.initIO = httpServer => {
 
       // 🚀 Incoming Call Push Notification
       if (data.token) {
-        // We pack the entire call payload here so the app can wake up and answer
         sendPush(data.token, "Incoming Audio Call", `${data.callerName} is calling you...`, {
           isCall: 'true',
           callerId: String(data.callerId || ''),
@@ -100,11 +98,13 @@ module.exports.initIO = httpServer => {
     socket.on('endCall', data => {
       socket.to(data.to).emit('remoteHangup');
 
-      // 🚀 Missed Call Push Notification
+      // 🚀 Missed Call Push Notification - Safely attaches IDs so React Native cancels the Ringing popup!
       if (data.token && data.missed) {
         sendPush(data.token, "Missed Audio Call", `You missed a call from ${data.callerName}`, {
-          friendId: String(data.callerId || ''),
-          friendName: String(data.callerName || '')
+          callerId: String(data.callerId || ''),
+          callerName: String(data.callerName || ''),
+          friendId: String(data.callerId || ''),      // Fallback
+          friendName: String(data.callerName || '')   // Fallback
         });
       }
     });
@@ -115,22 +115,16 @@ module.exports.initIO = httpServer => {
       });
     });
 
-    socket.on('videoToggle', data => {
-      socket.to(data.to).emit('videoToggle', {
+    // ✅ Upgraded video tracking mechanism so user streams sync perfectly
+    socket.on('videoStateChanged', data => {
+      socket.to(data.to).emit('videoStateChanged', {
         isVideoOn: data.isVideoOn,
-      });
-    });
-
-    socket.on('videoToggleResponse', data => {
-      socket.to(data.to).emit('videoToggleResponse', {
-        accepted: data.accepted,
       });
     });
 
     // 🚀 Text Message Push Notification
     socket.on('sendNotification', data => {
       if (data.token) {
-        // Pass the Message/Chat IDs into the data chunk to perform the background Firestore update.
         sendPush(data.token, data.title, data.body, { 
           friendId: String(data.senderId || ''), 
           friendName: String(data.title || ''), 
